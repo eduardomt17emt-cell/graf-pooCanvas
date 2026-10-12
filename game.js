@@ -4,18 +4,19 @@ const ctx = canvas.getContext('2d');
 
 // Clase Ball (Pelota)
 class Ball {
-    constructor(x, y, radius, speedX, speedY) {
+    constructor(x, y, radius, speedX, speedY, color) {
         this.x = x;
         this.y = y;
         this.radius = radius;
         this.speedX = speedX;
         this.speedY = speedY;
+        this.color = color;
     }
 
     draw() {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = this.color;
         ctx.fill();
         ctx.closePath();
     }
@@ -24,7 +25,7 @@ class Ball {
         this.x += this.speedX;
         this.y += this.speedY;
 
-        // ColisiÃ³n con la parte superior e inferior
+        // Colisión con la parte superior e inferior
         if (this.y - this.radius <= 0 || this.y + this.radius >= canvas.height) {
             this.speedY = -this.speedY;
         }
@@ -33,23 +34,24 @@ class Ball {
     reset() {
         this.x = canvas.width / 2;
         this.y = canvas.height / 2;
-        this.speedX = -this.speedX; // Cambia direcciÃ³n al resetear
+        this.speedX = -this.speedX; // Cambia dirección al resetear
     }
 }
 
 // Clase Paddle (Paleta)
 class Paddle {
-    constructor(x, y, width, height, isPlayerControlled = false) {
+    constructor(x, y, width, height, color, isPlayerControlled = false) {
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
+        this.color = color;
         this.isPlayerControlled = isPlayerControlled;
         this.speed = 5;
     }
 
     draw() {
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = this.color;
         ctx.fillRect(this.x, this.y, this.width, this.height);
     }
 
@@ -61,7 +63,7 @@ class Paddle {
         }
     }
 
-    // Movimiento de la paleta automÃ¡tica (IA)
+    // Movimiento de la paleta automática (IA) — usa la primera pelota como referencia
     autoMove(ball) {
         if (ball.y < this.y + this.height / 2) {
             this.y -= this.speed;
@@ -74,21 +76,32 @@ class Paddle {
 // Clase Game (Controla el juego)
 class Game {
     constructor() {
-        this.ball = new Ball(canvas.width / 2, canvas.height / 2, 10, 4, 4);
-        this.paddle1 = new Paddle(0, canvas.height / 2 - 50, 10, 100, true); // jugador
-        this.paddle2 = new Paddle(canvas.width - 10, canvas.height / 2 - 50, 10, 100); // CPU
+        // 5 pelotas con diferente tamaño, color y velocidad
+        this.balls = [
+            new Ball(canvas.width / 2, canvas.height / 2, 8,  3, 3, 'red'),
+            new Ball(canvas.width / 2, canvas.height / 2, 12, 4, 2, 'yellow'),
+            new Ball(canvas.width / 2, canvas.height / 2, 6,  5, 5, 'cyan'),
+            new Ball(canvas.width / 2, canvas.height / 2, 15, 2, 4, 'lime'),
+            new Ball(canvas.width / 2, canvas.height / 2, 10, 6, 3, 'orange'),
+        ];
+
+        // Paleta del jugador con el doble de alto (200 en vez de 100) y color rojo
+        this.paddle1 = new Paddle(0, canvas.height / 2 - 100, 10, 200, 'red', true);
+        // Paleta de la CPU en azul, tamaño original
+        this.paddle2 = new Paddle(canvas.width - 10, canvas.height / 2 - 50, 10, 100, 'blue');
+
         this.keys = {}; // Para capturar las teclas
     }
 
     draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        this.ball.draw();
+        this.balls.forEach(ball => ball.draw());
         this.paddle1.draw();
         this.paddle2.draw();
     }
 
     update() {
-        this.ball.move();
+        this.balls.forEach(ball => ball.move());
 
         // Movimiento de la paleta 1 (Jugador) controlado por teclas
         if (this.keys['ArrowUp']) {
@@ -98,24 +111,26 @@ class Game {
             this.paddle1.move('down');
         }
 
-        // Movimiento de la paleta 2 (Controlada por IA)
-        this.paddle2.autoMove(this.ball);
+        // Movimiento de la paleta 2 (Controlada por IA), sigue a la primera pelota
+        this.paddle2.autoMove(this.balls[0]);
 
-        // Colisiones con las paletas
-        if (this.ball.x - this.ball.radius <= this.paddle1.x + this.paddle1.width &&
-            this.ball.y >= this.paddle1.y && this.ball.y <= this.paddle1.y + this.paddle1.height) {
-            this.ball.speedX = -this.ball.speedX;
-        }
+        // Colisiones de cada pelota con ambas paletas
+        this.balls.forEach(ball => {
+            if (ball.x - ball.radius <= this.paddle1.x + this.paddle1.width &&
+                ball.y >= this.paddle1.y && ball.y <= this.paddle1.y + this.paddle1.height) {
+                ball.speedX = -ball.speedX;
+            }
 
-        if (this.ball.x + this.ball.radius >= this.paddle2.x &&
-            this.ball.y >= this.paddle2.y && this.ball.y <= this.paddle2.y + this.paddle2.height) {
-            this.ball.speedX = -this.ball.speedX;
-        }
+            if (ball.x + ball.radius >= this.paddle2.x &&
+                ball.y >= this.paddle2.y && ball.y <= this.paddle2.y + this.paddle2.height) {
+                ball.speedX = -ball.speedX;
+            }
 
-        // Detectar cuando la pelota sale de los bordes (punto marcado)
-        if (this.ball.x - this.ball.radius <= 0 || this.ball.x + this.ball.radius >= canvas.width) {
-            this.ball.reset();
-        }
+            // Detectar cuando la pelota sale de los bordes (punto marcado)
+            if (ball.x - ball.radius <= 0 || ball.x + ball.radius >= canvas.width) {
+                ball.reset();
+            }
+        });
     }
 
     // Captura de teclas para el control de la paleta
